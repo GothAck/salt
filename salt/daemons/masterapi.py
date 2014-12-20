@@ -558,13 +558,27 @@ class RemoteFuncs(object):
             if not os.path.isdir(cdir):
                 os.makedirs(cdir)
             datap = os.path.join(cdir, 'mine.p')
+            new_times = {}
+            do_update_times = self.opts.get('minion_data_cache_times', False)
+            update_time = time.time()
             if not load.get('clear', False):
                 if os.path.isfile(datap):
                     with salt.utils.fopen(datap, 'rb') as fp_:
                         new = self.serial.load(fp_)
                     if isinstance(new, dict):
+                        if do_update_times:
+                            for k in new:
+                                time_key = k + '_update_time'
+                                if new[k] != load['data'][k]:
+                                    new_times[time_key] = update_time
                         new.update(load['data'])
                         load['data'] = new
+            if do_update_times:
+                for key in load['data']:
+                    time_key = key + '_update_time'
+                    if time_key not in load['data']:
+                        new_times[time_key] = update_time
+                new.update(new_times)
             with salt.utils.fopen(datap, 'w+b') as fp_:
                 fp_.write(self.serial.dumps(load['data']))
         return True
